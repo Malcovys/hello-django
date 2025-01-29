@@ -1,24 +1,34 @@
-from rest_framework.serializers import ModelSerializer, SerializerMethodField
+from rest_framework import serializers
 
 from shop.models import Category, Product, Article
 
 
-class ArticleSerializer(ModelSerializer):
+class ArticleSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Article
         fields = ['id', 'name', 'price', 'product', 'date_created', 'date_updated']
+    
+    def validate_price(self, value):
+        if value <= 1:
+            raise serializers.ValidationError('Price must be greater than 1')
+        return value
+
+    def validate_product(self, value):
+        if not value.active:
+            raise serializers.ValidationError('Product is not active')
+        return value
 
 
-class ProductListSerializer(ModelSerializer):
+class ProductListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Product
         fields = ['id', 'name', 'category', 'date_created', 'date_updated']
 
-class ProductDetailSerializer(ModelSerializer):
+class ProductDetailSerializer(serializers.ModelSerializer):
 
-    articles = SerializerMethodField()
+    articles = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
@@ -30,15 +40,25 @@ class ProductDetailSerializer(ModelSerializer):
         return serializer.data
 
 
-class CategoryListSerializer(ModelSerializer):
+class CategoryListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Category
-        fields = ['id', 'name', 'date_created', 'date_updated']
+        fields = ['id', 'name', 'date_created', 'date_updated', 'description']
+    
+    def validate_name(self, value): # Validation d'un champ
+        if Category.objects.filter(name=value).exists():
+            raise serializers.ValidationError('Category already exists')
+        return value
+    
+    def validate(self, data): # Validation multiple
+        if data['name'] not in data['description']:
+            raise serializers.ValidationError("Name must be in description")
+        return data
 
-class CategoryDetailSerializer(ModelSerializer):
+class CategoryDetailSerializer(serializers.ModelSerializer):
 
-    products = SerializerMethodField()
+    products = serializers.SerializerMethodField()
 
     class Meta:
         model = Category
